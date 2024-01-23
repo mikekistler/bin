@@ -1,0 +1,52 @@
+#!/bin/zsh
+
+n=$1
+
+if [ -z "$n" ]; then
+    echo "Usage: review <PR number>"
+    exit 1
+fi
+
+# Checkout the PR
+gh pr checkout --force $n
+
+# If the checkout failed, exit
+if [ $? -ne 0 ]; then
+    echo "Checkout for $n failed"
+    exit 1
+fi
+
+# Open the PR in a browser window
+gh pr view --web
+
+# Collect some information about the PR to put in the review note
+
+# create temporary file
+tmpfile=$(mktemp ~/tmp/review-$n.txt)
+
+url=$(gh pr view --json url -q '.url')
+
+files=$(gh pr view --json files -q '.files[] | .path')
+
+service=$(echo $files | grep 'specification/' | awk -F "/" '{print $2}' | sort | uniq)
+
+apiVersion=$(echo $files | grep 'specification/' | grep 'stable\|preview' |
+  # Using # for sed delimeter sinc pattern needs both / and | \
+  sed -E 's#.*/(preview|stable)/##' |
+  awk -F "/" '{print $1}' | sort | tail -1)
+
+{
+    echo "\n\n$url\n\n$service\n\n$apiVersion"
+    # More stuff to be added here
+} > $tmpfile
+
+osascript ~/bin/open-review-note.scpt $n $tmpfile
+
+jsonFiles=$(echo $files | grep 'specification/' | grep -v '/examples/' | grep '.json$')
+
+# Open the OpenAPI files in VS Code
+echo $jsonFiles | grep -v 'common' | read f; code . -g $f
+
+echo $jsonFiles | while read f; do
+    spectral lint $f
+done

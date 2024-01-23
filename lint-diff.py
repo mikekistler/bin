@@ -1,0 +1,1 @@
+/Users/mikekistler/Projects/Azure/azure-api-style-guide/lint-diff.py
