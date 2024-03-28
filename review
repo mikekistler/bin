@@ -17,30 +17,48 @@ if [ $? -ne 0 ]; then
 fi
 
 # Open the PR in a browser window
-gh pr view --web
+# Must specify the PR # until this issue is fixed:
+# https://github.com/cli/cli/issues/7590
+gh pr view $n --web
 
 # Collect some information about the PR to put in the review note
 
-# create temporary file
-tmpfile=$(mktemp ~/tmp/review-$n.txt)
+url=$(gh pr view $n --json url -q '.url')
 
-url=$(gh pr view --json url -q '.url')
+# Get the repo name from gh command
+repo=$(gh repo view --json name -q '.name')
 
-files=$(gh pr view --json files -q '.files[] | .path')
+# Can't use gh pr view --json files because it only returns the first 100 files
+# see: https://github.com/cli/cli/issues/5368
+# files=$(gh pr view $n --json files -q '.files[] | .path')
+
+# This command returns a list of files directly (up to 3000)
+files=$(gh api graphql -f query='
+  query($owner: String!, $repo: String!, $pr: Int!, $endCursor: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $pr) {
+        files(first: 100, after: $endCursor) {
+          pageInfo{ hasNextPage, endCursor }
+          nodes {
+            path
+          }
+        }
+      }
+    }
+  }' -F owner='Azure' -F repo="${repo}" -F pr=$n --paginate --jq '.data.repository.pullRequest.files.nodes.[].path')
 
 service=$(echo $files | grep 'specification/' | awk -F "/" '{print $2}' | sort | uniq)
 
-apiVersion=$(echo $files | grep 'specification/' | grep 'stable\|preview' |
+apiVersion=$(echo $files | grep 'specification/' | grep -v 'examples/' | grep 'stable\|preview' |
   # Using # for sed delimeter sinc pattern needs both / and | \
   sed -E 's#.*/(preview|stable)/##' |
   awk -F "/" '{print $1}' | sort | tail -1)
 
 {
-    echo "\n\n$url\n\n$service\n\n$apiVersion"
+    # AppleScript swallows the newlines so we need to use html breaks
+    echo "<br/>$url<br/><br/>$service<br/><br/>$apiVersion<br/>"
     # More stuff to be added here
-} > $tmpfile
-
-osascript ~/bin/open-review-note.scpt $n $tmpfile
+} | osascript ~/bin/open-review-note.scpt $n 3<&0
 
 jsonFiles=$(echo $files | grep 'specification/' | grep -v '/examples/' | grep '.json$')
 
