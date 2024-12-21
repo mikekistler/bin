@@ -50,7 +50,7 @@ files=$(gh api graphql -f query='
 service=$(echo $files | grep 'specification/' | awk -F "/" '{print $2}' | sort | uniq)
 
 apiVersion=$(echo $files | grep 'specification/' | grep -v 'examples/' | grep 'stable\|preview' |
-  # Using # for sed delimeter sinc pattern needs both / and | \
+  # Using # for sed delimiter since pattern needs both / and | \
   sed -E 's#.*/(preview|stable)/##' |
   awk -F "/" '{print $1}' | sort | tail -1)
 
@@ -58,7 +58,7 @@ apiVersion=$(echo $files | grep 'specification/' | grep -v 'examples/' | grep 's
     # AppleScript swallows the newlines so we need to use html breaks
     echo "<br/>$url<br/><br/>$service<br/><br/>$apiVersion<br/>"
     # More stuff to be added here
-} | osascript ~/bin/open-review-note.scpt $n 3<&0
+} | open-note "PR $n" "API Stewardship" 3<&0
 
 jsonFiles=$(echo $files | grep 'specification/' | grep -v '/examples/' | grep '.json$')
 
