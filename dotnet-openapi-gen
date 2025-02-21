@@ -1,0 +1,24 @@
+#!/bin/zsh
+
+f=$(ls *.csproj)
+
+if [ -z "$f" ]; then
+    echo "Unable to find csproj file"
+    exit 1
+fi
+
+dotnet add package Microsoft.Extensions.ApiDescription.Server
+
+tmpfile=${f/.csproj/.tmp}
+{
+    awk '/<ItemGroup>/ { f = 1 } !f' $f
+    cat <<EOF
+  <PropertyGroup>
+    <OpenApiDocumentsDirectory>\$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
+  </PropertyGroup>
+
+EOF
+    awk '/<ItemGroup>/ { f = 1 } f' $f
+} > $tmpfile
+
+mv $tmpfile $f
