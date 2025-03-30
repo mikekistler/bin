@@ -1,0 +1,8 @@
+#!/bin/zsh
+
+# This script fixes line endings in all files in the current directory and its subdirectories.
+# It converts all files to Unix line endings (LF) and removes any trailing whitespace.
+
+find . -type f | grep -v 'obj/' | grep -v 'bin/' | grep -v .git | while read f; do
+  sed -i '' 's/\r$//' "$f"
+done
