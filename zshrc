@@ -28,7 +28,8 @@ git_branch() {
 
 setopt PROMPT_SUBST
 export PROMPT='[%n@%m] %0~$(git_branch)>'
-#export PROMPT='%1d$(git_branch)>'
+#To drop all but the final path segment:
+#export PROMPT='[%n@%m] %1~$(git_branch)>'
 
 # Allow comments in interactive shell
 setopt interactivecomments
