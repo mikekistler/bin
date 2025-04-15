@@ -58,7 +58,7 @@ apiVersion=$(echo $files | grep 'specification/' | grep -v 'examples/' | grep 's
     # AppleScript swallows the newlines so we need to use html breaks
     echo "<br/>$url<br/><br/>$service<br/><br/>$apiVersion<br/>"
     # More stuff to be added here
-} | open-note "PR $n" "API Stewardship" 3<&0
+} | open-note "PR $n" "API Stewardship//REST API Reviews" 3<&0
 
 jsonFiles=$(echo $files | grep 'specification/' | grep -v '/examples/' | grep '.json$')
 
