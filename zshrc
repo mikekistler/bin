@@ -31,6 +31,11 @@ export PROMPT='[%n@%m] %0~$(git_branch)>'
 #To drop all but the final path segment:
 #export PROMPT='[%n@%m] %1~$(git_branch)>'
 
+# Use a short prompt in VSCode terminal
+if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    export PROMPT='[%n@%m] %1~$(git_branch)>'
+fi
+
 # Allow comments in interactive shell
 setopt interactivecomments
 
