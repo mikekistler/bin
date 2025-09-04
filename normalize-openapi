@@ -22,8 +22,33 @@ if [ ! -f "$input_file" ]; then
     exit 1
 fi
 
-# Use jq to sort the paths and definitions lexicographically
-jq '{
+# Use jq to sort the paths and definitions lexicographically and reorder entries in each Path item
+jq '
+# Helper: reorder entries in a Path Item in a fixed order. Any keys not in the
+# fixed list will be appended afterwards in lexicographic order. This produces a
+# stable, human-friendly ordering of operations and metadata within each Path.
+
+# If the input is not an object (e.g., it is an array or null), return it unchanged.
+# This prevents attempts to index arrays with string keys (which causes jq errors).
+
+def reorder_path_item:
+  if type == "object" then
+    . as $o
+    # Define the canonical order for Path Item fields (common OpenAPI/OpenAPI v2 items)
+    | (reduce ["$ref","summary","description","get","put","post","delete","options","head","patch","trace","servers","parameters"][] as $k ({}; if ($o | has($k)) then . + {($k): $o[$k]} else . end))
+    # Append any remaining keys (not in the fixed list) sorted by key
+    + (($o
+        | to_entries
+        | map(select(.key as $k | (["$ref","summary","description","get","put","post","delete","options","head","patch","trace","servers","parameters"] | index($k) == null)))
+        | sort_by(.key)
+        | map({(.key): .value})
+        | add) // {})
+  else
+    .
+  end
+;
+
+{
     swagger: .swagger,
     info: .info,
     host: .host,
@@ -31,7 +56,13 @@ jq '{
     schemes: .schemes,
     consumes: .consumes,
     produces: .produces,
-    paths: (.paths | to_entries | sort_by(.key) | from_entries),
+    paths: (
+        .paths
+        | to_entries
+        | sort_by(.key)
+        | map({ key: .key, value: (.value | reorder_path_item) })
+        | from_entries
+    ),
     definitions: (.definitions | to_entries | sort_by(.key) | from_entries)
 }' "$input_file" > "$output_file"
 
