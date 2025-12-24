@@ -1,8 +1,19 @@
 #!/bin/zsh
 
 # This script fixes line endings in all files in the current directory and its subdirectories.
-# It converts all files to Unix line endings (LF) and removes any trailing whitespace.
+# It converts all files to Unix line endings (LF), removes any trailing carriage returns (CR),
+# and removes a UTF-8 BOM (Byte Order Mark) from the beginning of a file if present.
 
-find . -type f | grep -v 'obj/' | grep -v 'bin/' | grep -v .git | while read f; do
+find . -type f | grep -v 'obj/' | grep -v 'bin/' | grep -v .git | while read -r f; do
+  # Skip binary files
+  if file --mime "$f" | grep -q 'charset=binary'; then
+    continue
+  fi
+  
+  # Remove UTF-8 BOM (0xEF 0xBB 0xBF) from the start of the first line, if present.
+  # Using printf to insert the literal BOM bytes so sed can match them reliably.
+  sed -i '' "1s/^$(printf '\357\273\277')//" "$f"
+
+  # Convert CRLF to LF by removing trailing CR characters.
   sed -i '' 's/\r$//' "$f"
 done

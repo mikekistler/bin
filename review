@@ -21,7 +21,7 @@ fi
 url=$(gh pr view $n --json url -q '.url')
 
 # Open the PR in a new browser window
-osascript -e "tell application \"Safari\" to make new document with properties {URL:\"$url\"}"
+osascript -e "tell application \"Edge\" to make new document with properties {URL:\"$url\"}"
 
 # Get the repo name from gh command
 repo=$(gh repo view --json name -q '.name')
