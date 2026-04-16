@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#spectral lint -q -f json $1 | ~/Projects/Azure/azure-api-style-guide/summary.py
+
+# Need to pass the output with an actual file rather than a pipe to avoid
+# json.decoder.JSONDecodeError: Unterminated string starting at: line 2895 column 4 (char 65526)
+
+tmpfile=$(mktemp ~/tmp/abc-script.XXXXXX)
+spectral lint -q -f json $1 > $tmpfile
+~/Projects/Azure/azure-api-style-guide/summary.py < $tmpfile
+rm $tmpfile
