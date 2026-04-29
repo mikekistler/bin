@@ -44,3 +44,5 @@ setopt nobanghist
 
 # Add dotnet tools (installed with dotnet tool command) to path
 export PATH="$PATH:$HOME/.dotnet/tools"
+
+source ~/bin/worktrees.zsh
