@@ -1,3 +1,5 @@
+# === Worktree jump (wt) ===
+
 wt() {
   # === No args → list features ===
   if [ -z "$1" ]; then
@@ -46,4 +48,23 @@ wt() {
   local path=$(echo "$matches" | cut -d: -f2)
   cd "$path"
 }
+
+
+# === Completion for wt ===
+_wt_completion() {
+  local features
+  features=($(
+    git worktree list --porcelain |
+    awk '
+      /^worktree / {
+        name=$2
+        sub(/^.*\//,"",name)
+        print substr(name, index(name, "-") + 1)
+      }
+    '
+  ))
+  compadd -- $features
+}
+
+compdef _wt_completion wt
 
