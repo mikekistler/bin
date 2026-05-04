@@ -31,6 +31,23 @@ jq '
 # If the input is not an object (e.g., it is an array or null), return it unchanged.
 # This prevents attempts to index arrays with string keys (which causes jq errors).
 
+def reorder_operation:
+  if type == "object" then
+    . as $o
+    # Define the canonical order for Operation fields
+    | (reduce ["tags","operationId","summary","description","externalDocs","consumes","produces","parameters","responses"][] as $k ({}; if ($o | has($k)) then . + {($k): $o[$k]} else . end))
+    # Append any remaining keys (not in the fixed list) sorted by key
+    + (($o
+        | to_entries
+        | map(select(.key as $k | (["tags","operationId","summary","description","externalDocs","consumes","produces","parameters","responses"] | index($k) == null)))
+        | sort_by(.key)
+        | map({(.key): .value})
+        | add) // {})
+  else
+    .
+  end
+;
+
 def reorder_path_item:
   if type == "object" then
     . as $o
@@ -46,6 +63,14 @@ def reorder_path_item:
   else
     .
   end
+  # Now reorder keys within each operation object
+  | if type == "object" then
+      with_entries(
+        if (.key | IN("get","put","post","delete","options","head","patch","trace")) then
+          .value |= reorder_operation
+        else . end
+      )
+    else . end
 ;
 
 {
