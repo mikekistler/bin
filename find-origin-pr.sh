@@ -17,15 +17,22 @@ if [ "${2:-}" == "" ]; then
   fi
 fi
 
+# Determine remote: prefer "upstream" (common fork convention), fall back to "origin"
+if git remote | grep -qx upstream; then
+  REMOTE="upstream"
+else
+  REMOTE="origin"
+fi
+
 # Ensure repo is up to date
-git fetch origin "$BRANCH" >/dev/null 2>&1 || true
+git fetch "$REMOTE" "$BRANCH" >/dev/null 2>&1 || true
 
 echo "🔍 Finding first commit that introduced: $FILE (on $BRANCH)"
 
 # Step 1: find first commit that added the file
 # Note: --follow is intentionally omitted because rename detection can produce
 # false positives in large repos with many similarly-structured files.
-SHA=$(git log "origin/$BRANCH" \
+SHA=$(git log "$REMOTE/$BRANCH" \
   --diff-filter=A \
   --format=%H \
   -- "$FILE" | tail -n 1)
