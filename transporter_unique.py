@@ -21,19 +21,22 @@ How it works
    different filenames or are located in different folders.
 5. Files that are not already present in Documents are identified
    as unique.
-6. The Transporter folder structure is preserved when files are copied
-   to Documents.
+6. Files that are unique are copied to Documents while preserving
+   their folder structure relative to Transporter.
 
 Safety
 ------
-The script does not delete or modify any files in either Transporter
-or Documents.
+The script does not delete or modify any files in Transporter.
 
-The script is initially intended to be run as a DRY RUN. It only
-reports which files would be copied and makes no changes.
+The script is initially run as a DRY RUN. It only reports which files
+would be copied and makes no changes.
 
-After reviewing the dry-run results, the script can be modified/run
-with the --copy option to actually copy the unique files.
+After reviewing the dry-run results, run the script with the --copy
+option to actually copy the unique files.
+
+If a file with the same relative path already exists in Documents but
+has different contents, the script will NOT overwrite it. Instead, it
+will report a conflict and skip that file.
 
 Usage
 -----
@@ -47,37 +50,68 @@ The dry run should always be reviewed before performing the copy.
 """
 
 import os
+import sys
 import hashlib
 import shutil
 
 SOURCE = "/Users/Mike/Transporter"
 DEST = "/Users/Mike/Documents"
 
+
 def file_hash(path):
+    """Return the SHA-256 hash of a file."""
     h = hashlib.sha256()
+
     with open(path, "rb") as f:
-        while chunk := f.read(1024 * 1024):
+        while True:
+            chunk = f.read(1024 * 1024)
+            if not chunk:
+                break
             h.update(chunk)
+
     return h.hexdigest()
 
-# Build a hash index of all files already in Documents
+
+# ----------------------------------------------------------------------
+# Check command-line option
+# ----------------------------------------------------------------------
+
+DO_COPY = "--copy" in sys.argv
+
+
+# ----------------------------------------------------------------------
+# Build an index of all files already in Documents
+# ----------------------------------------------------------------------
+
 print("Indexing Documents...")
+print()
+
 dest_hashes = {}
 
 for root, dirs, files in os.walk(DEST):
     for name in files:
         path = os.path.join(root, name)
+
         try:
-            dest_hashes[file_hash(path)] = path
+            h = file_hash(path)
+            dest_hashes[h] = path
         except (PermissionError, OSError) as e:
-            print(f"Could not read: {path} ({e})")
+            print(f"Could not read: {path}")
+            print(f"  {e}")
 
-print(f"Found {len(dest_hashes)} files in Documents.")
+print(f"Found {len(dest_hashes)} unique file contents in Documents.")
+print()
 
-# Find Transporter files whose contents aren't already in Documents
+
+# ----------------------------------------------------------------------
+# Find Transporter files that aren't already in Documents
+# ----------------------------------------------------------------------
+
 unique_files = []
+conflicts = []
 
-print("\nChecking Transporter...")
+print("Checking Transporter...")
+print()
 
 for root, dirs, files in os.walk(SOURCE):
     for name in files:
@@ -86,26 +120,110 @@ for root, dirs, files in os.walk(SOURCE):
         try:
             h = file_hash(source_path)
         except (PermissionError, OSError) as e:
-            print(f"Could not read: {source_path} ({e})")
+            print(f"Could not read: {source_path}")
+            print(f"  {e}")
             continue
 
-        if h not in dest_hashes:
-            relative = os.path.relpath(source_path, SOURCE)
-            dest_path = os.path.join(DEST, relative)
+        # File contents already exist somewhere in Documents
+        if h in dest_hashes:
+            continue
+
+        # Preserve the Transporter folder structure
+        relative = os.path.relpath(source_path, SOURCE)
+        dest_path = os.path.join(DEST, relative)
+
+        # Don't overwrite a different file at the same destination path
+        if os.path.exists(dest_path):
+            conflicts.append((source_path, dest_path))
+        else:
             unique_files.append((source_path, dest_path))
 
-print(f"\nFiles in Transporter NOT already in Documents: {len(unique_files)}")
+
+# ----------------------------------------------------------------------
+# Report results
+# ----------------------------------------------------------------------
+
+print("=" * 70)
+print(f"Unique files to copy: {len(unique_files)}")
+print(f"Conflicts skipped:    {len(conflicts)}")
+print("=" * 70)
+print()
+
+if unique_files:
+    print("Files that will be copied:")
+    print()
+
+    for source, dest in unique_files:
+        print(f"{source}")
+        print(f"  -> {dest}")
+        print()
+
+if conflicts:
+    print()
+    print("=" * 70)
+    print("CONFLICTS -- these files were NOT copied:")
+    print("=" * 70)
+    print()
+
+    for source, dest in conflicts:
+        print(f"Transporter: {source}")
+        print(f"Documents:   {dest}")
+        print()
+
+
+# ----------------------------------------------------------------------
+# Dry run
+# ----------------------------------------------------------------------
+
+if not DO_COPY:
+    print("=" * 70)
+    print("DRY RUN -- NOTHING WAS COPIED")
+    print("=" * 70)
+    print()
+    print("If the results look correct, run:")
+    print()
+    print("    python3 ~/transporter_unique.py --copy")
+    print()
+
+    sys.exit()
+
+
+# ----------------------------------------------------------------------
+# Perform the copy
+# ----------------------------------------------------------------------
 
 if not unique_files:
     print("Nothing needs to be copied.")
-    exit()
+    sys.exit()
 
-print("\nFiles that WOULD be copied:")
-print("-" * 70)
+print("=" * 70)
+print("COPYING FILES")
+print("=" * 70)
+print()
+
+copied = 0
 
 for source, dest in unique_files:
-    print(f"{source}")
-    print(f"  -> {dest}")
+    try:
+        # Create destination folder if necessary
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
 
-print("\nDRY RUN ONLY -- nothing has been copied.")
-print("Review the list above. If it looks correct, run the script with --copy.")
+        shutil.copy2(source, dest)
+
+        print(f"Copied: {source}")
+        print(f"     -> {dest}")
+        print()
+
+        copied += 1
+
+    except (PermissionError, OSError) as e:
+        print(f"ERROR copying: {source}")
+        print(f"  {e}")
+        print()
+
+
+print("=" * 70)
+print(f"Finished. {copied} of {len(unique_files)} files copied.")
+print(f"{len(conflicts)} conflicts skipped.")
+print("=" * 70)
+
