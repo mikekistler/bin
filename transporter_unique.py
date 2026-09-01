@@ -1,3 +1,51 @@
+"""
+Purpose
+-------
+Find files in the Transporter directory that are not already present in
+the Mac's Documents directory, based on file contents rather than filenames.
+
+Source:
+    /Users/Mike/Transporter
+
+Destination:
+    /Users/Mike/Documents
+
+How it works
+------------
+1. Recursively scans all files in Documents and creates a SHA-256 hash
+   index of their contents.
+2. Recursively scans all files in Transporter.
+3. For each Transporter file, compares its SHA-256 hash against the
+   files already in Documents.
+4. Identical files are considered duplicates, even if they have
+   different filenames or are located in different folders.
+5. Files that are not already present in Documents are identified
+   as unique.
+6. The Transporter folder structure is preserved when files are copied
+   to Documents.
+
+Safety
+------
+The script does not delete or modify any files in either Transporter
+or Documents.
+
+The script is initially intended to be run as a DRY RUN. It only
+reports which files would be copied and makes no changes.
+
+After reviewing the dry-run results, the script can be modified/run
+with the --copy option to actually copy the unique files.
+
+Usage
+-----
+Dry run (recommended first):
+    python3 ~/transporter_unique.py
+
+Actual copy, after reviewing the dry-run results:
+    python3 ~/transporter_unique.py --copy
+
+The dry run should always be reviewed before performing the copy.
+"""
+
 import os
 import hashlib
 import shutil
