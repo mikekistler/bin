@@ -27,12 +27,11 @@ git_branch() {
 }
 
 setopt PROMPT_SUBST
-export PROMPT='[%n@%m] %0~$(git_branch)>'
-#To drop all but the final path segment:
-#export PROMPT='[%n@%m] %1~$(git_branch)>'
+PROMPT='[%n@$(scutil --get ComputerName)] %0~$(git_branch)>'
 
 # Use a short prompt in VSCode terminal
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    # Drop all but the final path segment:
     export PROMPT='[%n@%m] %1~$(git_branch)>'
 fi
 
@@ -43,3 +42,9 @@ setopt interactivecomments
 setopt nobanghist
 
 source ~/bin/worktrees.zsh
+
+if [[ -d /Users/mike/.lmstudio/bin ]]; then
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/mike/.lmstudio/bin"
+# End of LM Studio CLI section
+fi
