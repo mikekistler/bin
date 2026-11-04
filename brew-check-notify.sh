@@ -24,6 +24,13 @@
 #
 # -----------------------------------------------------------------------------
 
+SEND_EMAIL=0
+case "$1" in
+    "") ;;
+    --email) SEND_EMAIL=1 ;;
+    *) echo "Usage: ${0:t} [--email]" >&2; exit 2 ;;
+esac
+
 BREW="/opt/homebrew/bin/brew"
 
 "$BREW" update >/dev/null 2>&1
@@ -31,9 +38,47 @@ BREW="/opt/homebrew/bin/brew"
 OUTDATED=$("$BREW" outdated 2>/dev/null)
 CASKS=$("$BREW" outdated --cask 2>/dev/null)
 
+HOSTNAME=$(scutil --get ComputerName)
+
 if [[ -n "$OUTDATED" || -n "$CASKS" ]]; then
     COUNT=$(printf "%s\n%s\n" "$OUTDATED" "$CASKS" |
         grep -c .)
+    SUBJECT="Homebrew updates available ($COUNT) on $HOSTNAME"
+    BODY="The following Homebrew updates are available on $HOSTNAME
 
-    osascript -e "display notification \"$COUNT Homebrew updates available\" with title \"Homebrew Update Check\""
+Formulae:
+$OUTDATED
+
+Casks:
+$CASKS
+
+To review and install updates, run:
+
+brew outdated
+brew upgrade"
+else
+    SUBJECT="Homebrew packages are up to date on $HOSTNAME"
+    BODY="All Homebrew packages are up to date on $HOSTNAME."
 fi
+
+if (( ! SEND_EMAIL )); then
+    printf "%s\n" "$SUBJECT"
+    exit 0
+fi
+
+TO="kistlertx@gmail.com"
+
+osascript - "$TO" "$SUBJECT" "$BODY" <<'APPLESCRIPT'
+on run argv
+    tell application "Mail"
+        set msg to make new outgoing message with properties ¬
+            {subject:item 2 of argv, content:item 3 of argv, visible:false}
+
+        tell msg
+            make new to recipient at end of to recipients with properties ¬
+                {address:item 1 of argv}
+            send
+        end tell
+    end tell
+end run
+APPLESCRIPT
