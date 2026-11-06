@@ -48,3 +48,8 @@ if [[ -d /Users/mike/.lmstudio/bin ]]; then
 export PATH="$PATH:/Users/mike/.lmstudio/bin"
 # End of LM Studio CLI section
 fi
+
+# uv
+if [[ -d /Users/mike/.local/bin ]]; then
+    export PATH="/Users/mike/.local/bin:$PATH"
+fi
