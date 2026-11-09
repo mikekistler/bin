@@ -36,7 +36,7 @@ BREW="/opt/homebrew/bin/brew"
 "$BREW" update >/dev/null 2>&1
 
 OUTDATED=$("$BREW" outdated 2>/dev/null)
-CASKS=$("$BREW" outdated --cask 2>/dev/null)
+CASKS=$("$BREW" outdated --cask --greedy-auto-updates 2>/dev/null)
 
 HOSTNAME=$(scutil --get ComputerName)
 
