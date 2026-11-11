@@ -1,32 +1,32 @@
 """
 Purpose
 -------
-Find files in the Transporter directory that are not already present in
-the Mac's Documents directory, based on file contents rather than filenames.
+Find files in the Mac's Documents directory that are not already present in
+the Synology Drive directory, based on file contents rather than filenames.
 
 Source:
-    /Users/Mike/Transporter
+    /Users/Mike/Documents
 
 Destination:
-    /Users/Mike/Documents
+    /Volumes/home/Synology Drive
 
 How it works
 ------------
-1. Recursively scans all files in Documents and creates a SHA-256 hash
+1. Recursively scans all files in Synology Drive and creates a SHA-256 hash
    index of their contents.
-2. Recursively scans all files in Transporter.
-3. For each Transporter file, compares its SHA-256 hash against the
-   files already in Documents.
+2. Recursively scans all files in Documents.
+3. For each Documents file, compares its SHA-256 hash against the
+   files already in Synology Drive.
 4. Identical files are considered duplicates, even if they have
    different filenames or are located in different folders.
-5. Files that are not already present in Documents are identified
+5. Files that are not already present in Synology Drive are identified
    as unique.
-6. Files that are unique are copied to Documents while preserving
-   their folder structure relative to Transporter.
+6. Files that are unique are copied to Synology Drive while preserving
+   their folder structure relative to Documents.
 
 Safety
 ------
-The script does not delete or modify any files in Transporter.
+The script does not delete or modify any files in Documents.
 
 The script is initially run as a DRY RUN. It only reports which files
 would be copied and makes no changes.
@@ -34,7 +34,9 @@ would be copied and makes no changes.
 After reviewing the dry-run results, run the script with the --copy
 option to actually copy the unique files.
 
-If a file with the same relative path already exists in Documents but
+If Synology Drive is unavailable, the script stops without copying files.
+
+If a file with the same relative path already exists in Synology Drive but
 has different contents, the script will NOT overwrite it. Instead, it
 will report a conflict and skip that file.
 
@@ -54,8 +56,8 @@ import sys
 import hashlib
 import shutil
 
-SOURCE = "/Users/Mike/Transporter"
-DEST = "/Users/Mike/Documents"
+SOURCE = "/Users/Mike/Documents"
+DEST = "/Volumes/home/Synology Drive"
 
 
 def file_hash(path):
@@ -80,10 +82,13 @@ DO_COPY = "--copy" in sys.argv
 
 
 # ----------------------------------------------------------------------
-# Build an index of all files already in Documents
+# Build an index of all files already in Synology Drive
 # ----------------------------------------------------------------------
 
-print("Indexing Documents...")
+if not os.path.isdir(DEST):
+    sys.exit(f"ERROR: Synology Drive directory is unavailable: {DEST}")
+
+print("Indexing Synology Drive...")
 print()
 
 dest_hashes = {}
@@ -99,18 +104,18 @@ for root, dirs, files in os.walk(DEST):
             print(f"Could not read: {path}")
             print(f"  {e}")
 
-print(f"Found {len(dest_hashes)} unique file contents in Documents.")
+print(f"Found {len(dest_hashes)} unique file contents in Synology Drive.")
 print()
 
 
 # ----------------------------------------------------------------------
-# Find Transporter files that aren't already in Documents
+# Find Documents files that aren't already in Synology Drive
 # ----------------------------------------------------------------------
 
 unique_files = []
 conflicts = []
 
-print("Checking Transporter...")
+print("Checking Documents...")
 print()
 
 for root, dirs, files in os.walk(SOURCE):
@@ -124,11 +129,11 @@ for root, dirs, files in os.walk(SOURCE):
             print(f"  {e}")
             continue
 
-        # File contents already exist somewhere in Documents
+        # File contents already exist somewhere in Synology Drive
         if h in dest_hashes:
             continue
 
-        # Preserve the Transporter folder structure
+        # Preserve the Documents folder structure
         relative = os.path.relpath(source_path, SOURCE)
         dest_path = os.path.join(DEST, relative)
 
@@ -166,8 +171,8 @@ if conflicts:
     print()
 
     for source, dest in conflicts:
-        print(f"Transporter: {source}")
-        print(f"Documents:   {dest}")
+        print(f"Documents:      {source}")
+        print(f"Synology Drive: {dest}")
         print()
 
 
@@ -226,4 +231,3 @@ print("=" * 70)
 print(f"Finished. {copied} of {len(unique_files)} files copied.")
 print(f"{len(conflicts)} conflicts skipped.")
 print("=" * 70)
-
