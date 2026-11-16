@@ -55,7 +55,9 @@ $CASKS
 To review and install updates, run:
 
 brew outdated
-brew upgrade"
+brew outdated --cask --greedy-auto-updates
+brew upgrade
+brew upgrade --cask --greedy-auto-updates"
 else
     SUBJECT="Homebrew packages are up to date on $HOSTNAME"
     BODY="All Homebrew packages are up to date on $HOSTNAME."
